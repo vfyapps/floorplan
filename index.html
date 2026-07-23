@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>VfY Plattegrond Tool</title>
+<style>
+  :root{
+    --teal:#2FA98C;
+    --teal-dark:#1F7A64;
+    --bg:#F5F6F7;
+    --ink:#26312E;
+    --line:#DADFDD;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    overscroll-behavior:none;
+  }
+  #app{
+    display:flex; flex-direction:column;
+    height:100dvh; max-width:520px; margin:0 auto;
+    background:#fff;
+  }
+  header{
+    padding:10px 12px 8px; border-bottom:1px solid var(--line); flex-shrink:0;
+  }
+  #propName{
+    width:100%; border:none; border-bottom:2px solid var(--teal);
+    font-size:17px; font-weight:600; padding:4px 2px; color:var(--ink);
+    background:transparent;
+  }
+  #propName:focus{outline:none;}
+  #floorRow{
+    display:flex; align-items:center; gap:6px; margin-top:8px;
+    overflow-x:auto; padding-bottom:2px;
+  }
+  .floorTab{
+    flex:0 0 auto; padding:6px 12px; border-radius:16px; font-size:13px;
+    border:1px solid var(--line); background:#fff; white-space:nowrap;
+  }
+  .floorTab.active{ background:var(--teal); color:#fff; border-color:var(--teal); }
+  #addFloorBtn{
+    flex:0 0 auto; width:30px; height:30px; border-radius:50%; border:1px solid var(--teal);
+    background:#fff; color:var(--teal); font-size:16px; line-height:1;
+  }
+  #hint{
+    font-size:12px; color:#6b7876; padding:6px 12px 0; flex-shrink:0; min-height:16px;
+  }
+  #modeRow{
+    display:flex; gap:6px; padding:8px 12px; flex-shrink:0;
+  }
+  .modeBtn{
+    flex:1; padding:9px 4px; font-size:13px; border-radius:10px;
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+  }
+  .modeBtn.active{ background:var(--teal-dark); color:#fff; border-color:var(--teal-dark); }
+  #canvasWrap{
+    flex:1; min-height:0; display:flex; align-items:flex-start; justify-content:center;
+    padding:4px 10px; overflow:hidden;
+  }
+  #canvas{
+    width:100%; max-width:440px; aspect-ratio:320/460;
+    background:#fff; border:1px solid var(--line); border-radius:6px;
+    touch-action:none; display:block;
+  }
+  #bottomBar{
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    border-top:1px solid var(--line); flex-shrink:0;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  }
+  .barBtn{
+    padding:10px 14px; font-size:13px; border-radius:10px; border:1px solid var(--line);
+    background:#fff; color:var(--ink);
+  }
+  .barBtn:disabled{ opacity:.4; }
+  .barBtn.danger{ border-color:#D9534F; color:#D9534F; }
+  #exportBtn{
+    margin-left:auto; background:var(--teal); color:#fff; border:none;
+    padding:11px 16px; font-size:14px; font-weight:600; border-radius:10px;
+  }
+  .sheet{
+    position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto;
+    background:#fff; border-top:1px solid var(--line); border-radius:16px 16px 0 0;
+    padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 24px rgba(0,0,0,.15);
+    transform:translateY(100%); transition:transform .18s ease-out; z-index:20;
+  }
+  .sheet.open{ transform:translateY(0); }
+  .sheetTitle{ font-size:14px; font-weight:600; margin-bottom:10px; }
+  .presetGrid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .presetChip{
+    padding:9px 12px; border-radius:10px; font-size:13px; border:1.5px solid var(--line); background:#fff;
+  }
+  .presetChip.custom{ border-style:dashed; }
+  #overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:10; display:none;
+  }
+  #overlay.show{ display:block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <input id="propName" type="text" value="Nieuwe woning" placeholder="Naam van de woning">
+    <div id="floorRow"></div>
+  </header>
+
+  <div id="hint"></div>
+
+  <div id="modeRow">
+    <button class="modeBtn" data-mode="room">🏠 Kamer</button>
+    <button class="modeBtn" data-mode="door">🚪 Deur</button>
+    <button class="modeBtn" data-mode="window">🪟 Raam</button>
+    <button class="modeBtn" data-mode="select">↔ Verplaatsen</button>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div id="bottomBar">
+    <button class="barBtn" id="undoBtn">↶ Ongedaan maken</button>
+    <button class="barBtn" id="labelBtn" style="display:none">Label</button>
+    <button class="barBtn danger" id="deleteBtn" style="display:none">Verwijder</button>
+    <button id="exportBtn">Exporteren</button>
+  </div>
+</div>
+
+<div id="overlay"></div>
+<div class="sheet" id="labelSheet">
+  <div class="sheetTitle">Kies het type ruimte</div>
+  <div class="presetGrid" id="presetGrid"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ── Constanten ──────────────────────────────────────────────────────────
+  const LOGICAL_W = 320, LOGICAL_H = 460;
+  const LIVE_SCALE = 3;
+  const EXPORT_SCALE = 2.5;
+  const SNAP = 10;
+  const MIN_ROOM = 30;
+  const GAP_LEN = 26;      // lengte van deur/raam-opening
+  const EDGE_HIT = 16;     // hoeveel logische px van een muur telt als "raak"
+
+  const PRESETS = [
+    {type:'woonkamer', label:'Woonkamer', fill:'#FDF3E7', stroke:'#D9A94F'},
+    {type:'keuken',    label:'Keuken',    fill:'#FFEFE0', stroke:'#E08B3B'},
+    {type:'slaapkamer',label:'Slaapkamer',fill:'#EAF1FB', stroke:'#5B8DEF'},
+    {type:'badkamer',  label:'Badkamer',  fill:'#E7F7F4', stroke:'#2FA98C'},
+    {type:'toilet',    label:'Toilet',    fill:'#EAF7F3', stroke:'#2FA98C'},
+    {type:'gang',      label:'Gang/Hal',  fill:'#F2F2F2', stroke:'#9A9A9A'},
+    {type:'terras',    label:'Terras/Balkon', fill:'#EFF8EC', stroke:'#6FAE5C'},
+    {type:'berging',   label:'Berging',   fill:'#F0F0F0', stroke:'#8C8C8C'},
+    {type:'overig',    label:'Overig',    fill:'#FFFFFF', stroke:'#666666'}
+  ];
+  function presetFor(type){ return PRESETS.find(p=>p.type===type) || PRESETS[PRESETS.length-1]; }
+
+  // ── State ───────────────────────────────────────────────────────────────
+  let floors = [ newFloor("Begane grond") ];
+  let currentFloor = 0;
+  let mode = "room";
+  let selection = null; // {kind:'room'|'door'|'window', roomId, index?}
+  let history = [];
+
+  function newFloor(name){ return { name, rooms: [] }; }
+  function newId(){ return 'r'+Math.random().toString(36).slice(2,9); }
+
+  function snapshot(){
+    history.push(JSON.stringify(floors));
+    if (history.length > 60) history.shift();
+  }
+  function undo(){
+    if (!history.length) return;
+    floors = JSON.parse(history.pop());
+    selection = null;
+    if (currentFloor >= floors.length) currentFloor = floors.length-1;
+    renderAll();
+  }
+
+  // ── DOM refs ────────────────────────────────────────────────────────────
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const floorRow = document.getElementById('floorRow');
+  const hint = document.getElementById('hint');
+  const labelBtn = document.getElementById('labelBtn');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const undoBtn = document.getElementById('undoBtn');
+  const overlay = document.getElementById('overlay');
+  const labelSheet = document.getElementById('labelSheet');
+  const presetGrid = document.getElementById('presetGrid');
+
+  canvas.width = LOGICAL_W*LIVE_SCALE;
+  canvas.height = LOGICAL_H*LIVE_SCALE;
+
+  // ── Presets renderen in het label-sheet ────────────────────────────────
+  PRESETS.forEach(p=>{
+    const chip = document.createElement('button');
+    chip.className = 'presetChip';
+    chip.textContent = p.label;
+    chip.style.background = p.fill;
+    chip.style.borderColor = p.stroke;
+    chip.addEventListener('click', ()=> applyPreset(p));
+    presetGrid.appendChild(chip);
+  });
+  const customChip = document.createElement('button');
+  customChip.className = 'presetChip custom';
+  customChip.textContent = '+ Eigen naam';
+  customChip.addEventListener('click', ()=>{
+    const room = findRoom(selection && selection.roomId);
+    if (!room) return closeLabelSheet();
+    const val = prompt("Naam van de ruimte:", room.label || "");
+    if (val && val.trim()){
+      snapshot();
+      room.label = val.trim();
+      renderAll();
+    }
+    closeLabelSheet();
+  });
+  presetGrid.appendChild(customChip);
+
+  function applyPreset(preset){
+    const room = findRoom(selection && selection.roomId);
+    if (!room) return closeLabelSheet();
+    snapshot();
+    room.type = preset.type;
+    if (['slaapkamer','badkamer','toilet'].includes(preset.type)){
+      const count = floors[currentFloor].rooms.filter(r=>r.type===preset.type && r.id!==room.id).length;
+      room.label = preset.label + ' ' + (count+1);
+    } else {
+      room.label = preset.label;
+    }
+    closeLabelSheet();
+    renderAll();
+  }
+  function openLabelSheet(){ labelSheet.classList.add('open'); overlay.classList.add('show'); }
+  function closeLabelSheet(){ labelSheet.classList.remove('open'); overlay.classList.remove('show'); }
+  overlay.addEventListener('click', closeLabelSheet);
+
+  // ── Floor tabs ──────────────────────────────────────────────────────────
+  function renderFloorTabs(){
+    floorRow.innerHTML = '';
+    floors.forEach((f,i)=>{
+      const tab = document.createElement('button');
+      tab.className = 'floorTab' + (i===currentFloor ? ' active' : '');
+      tab.textContent = f.name;
+      tab.addEventListener('click', ()=>{ currentFloor = i; selection=null; renderAll(); });
+      tab.addEventListener('dblclick', ()=>{
+        const val = prompt("Naam van deze verdieping:", f.name);
+        if (val && val.trim()){ snapshot(); f.name = val.trim(); renderAll(); }
+      });
+      floorRow.appendChild(tab);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.id = 'addFloorBtn';
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', ()=>{
+      snapshot();
+      floors.push(newFloor("Verdieping " + (floors.length+1)));
+      currentFloor = floors.length-1;
+      renderAll();
+    });
+    floorRow.appendChild(addBtn);
+  }
+
+  // ── Mode buttons ────────────────────────────────────────────────────────
+  const HINTS = {
+    room: "Sleep op het canvas om een kamer te tekenen.",
+    door: "Tik op een muurlijn om een deur te plaatsen.",
+    window: "Tik op een muurlijn om een raam te plaatsen.",
+    select: "Tik een kamer aan om te verplaatsen. Sleep de hoekjes om te schalen."
+  };
+  document.querySelectorAll('.modeBtn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      mode = btn.dataset.mode;
+      selection = null;
+      document.querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('active', b===btn));
+      hint.textContent = HINTS[mode];
+      renderAll();
+    });
+  });
+  document.querySelector('.modeBtn[data-mode="room"]').classList.add('active');
+  hint.textContent = HINTS.room;
+
+  undoBtn.addEventListener('click', undo);
+  deleteBtn.addEventListener('click', deleteSelection);
+  labelBtn.addEventListener('click', openLabelSheet);
+  document.getElementById('exportBtn').addEventListener('click', exportPNG);
+
+  function findRoom(id){ return floors[currentFloor].rooms.find(r=>r.id===id); }
+
+  function deleteSelection(){
+    if (!selection) return;
+    const room = findRoom(selection.roomId);
+    if (!room) return;
+    snapshot();
+    if (selection.kind === 'room'){
+      floors[currentFloor].rooms = floors[currentFloor].rooms.filter(r=>r.id!==room.id);
+    } else if (selection.kind === 'door'){
+      room.doors.splice(selection.index,1);
+    } else if (selection.kind === 'window'){
+      room.windows.splice(selection.index,1);
+    }
+    selection = null;
+    renderAll();
+  }
+
+  // ── Geometrie helpers ───────────────────────────────────────────────────
+  function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+  function snap(v){ return Math.round(v/SNAP)*SNAP; }
+
+  function pointToSegment(p, a, b){
+    const dx=b.x-a.x, dy=b.y-a.y;
+    const len2 = dx*dx+dy*dy || 1e-6;
+    let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/len2;
+    t = clamp(t,0,1);
+    const proj = {x:a.x+t*dx, y:a.y+t*dy};
+    const d = Math.hypot(p.x-proj.x, p.y-proj.y);
+    return {distance:d, t};
+  }
+
+  const SIDES = {
+    top:    (r)=>({a:{x:r.x,y:r.y}, b:{x:r.x+r.w,y:r.y}, along:{x:1,y:0}, normal:{x:0,y:1}}),
+    bottom: (r)=>({a:{x:r.x,y:r.y+r.h}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:1,y:0}, normal:{x:0,y:-1}}),
+    left:   (r)=>({a:{x:r.x,y:r.y}, b:{x:r.x,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:1,y:0}}),
+    right:  (r)=>({a:{x:r.x+r.w,y:r.y}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:-1,y:0}})
+  };
+
+  function findNearestWall(p){
+    let best = null;
+    floors[currentFloor].rooms.forEach(room=>{
+      Object.keys(SIDES).forEach(sideKey=>{
+        const s = SIDES[sideKey](room);
+        const res = pointToSegment(p, s.a, s.b);
+        if (res.distance <= EDGE_HIT && (!best || res.distance < best.distance)){
+          best = {room, side:sideKey, t:res.t, distance:res.distance};
+        }
+      });
+    });
+    if (!best) return null;
+    const edgeLen = (best.side==='top'||best.side==='bottom') ? best.room.w : best.room.h;
+    const minT = clamp((GAP_LEN/2+4)/edgeLen, 0.05, 0.45);
+    const t = clamp(best.t, minT, 1-minT);
+    return {room:best.room, side:best.side, pos:t};
+  }
+
+  // ── Pointer interactie ─────────────────────────────────────────────────
+  let drag = null; // {type:'newroom'|'move'|'resize', ...}
+
+  function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX-rect.left)/rect.width*LOGICAL_W,
+      y: (e.clientY-rect.top)/rect.height*LOGICAL_H
+    };
+  }
+
+  function hitTestRoom(p){
+    const rooms = floors[currentFloor].rooms;
+    for (let i=rooms.length-1; i>=0; i--){
+      const r = rooms[i];
+      if (p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h) return r;
+    }
+    return null;
+  }
+  function hitTestHandle(p, room){
+    const handles = corners(room);
+    for (const h of handles){
+      if (Math.hypot(p.x-h.x, p.y-h.y) < 14) return h.key;
+    }
+    return null;
+  }
+  function corners(r){
+    return [
+      {key:'nw', x:r.x, y:r.y}, {key:'ne', x:r.x+r.w, y:r.y},
+      {key:'sw', x:r.x, y:r.y+r.h}, {key:'se', x:r.x+r.w, y:r.y+r.h}
+    ];
+  }
+
+  canvas.addEventListener('pointerdown', (e)=>{
+    canvas.setPointerCapture(e.pointerId);
+    const p = getPos(e);
+
+    if (mode === 'room'){
+      snapshot();
+      drag = {type:'newroom', start:{x:snap(p.x), y:snap(p.y)}};
+      return;
+    }
+    if (mode === 'door' || mode === 'window'){
+      const wall = findNearestWall(p);
+      if (wall){
+        snapshot();
+        const arr = mode === 'door' ? wall.room.doors : wall.room.windows;
+        arr.push({side:wall.side, pos:wall.pos});
+        renderAll();
+      }
+      return;
+    }
+    // select mode
+    const selRoom = selection && findRoom(selection.roomId);
+    if (selRoom && selection.kind==='room'){
+      const handle = hitTestHandle(p, selRoom);
+      if (handle){
+        snapshot();
+        drag = {type:'resize', room:selRoom, handle, startX:p.x, startY:p.y, orig:{...selRoom}};
+        return;
+      }
+    }
+    const room = hitTestRoom(p);
+    if (room){
+      selection = {kind:'room', roomId:room.id};
+      snapshot();
+      drag = {type:'move', room, startX:p.x, startY:p.y, origX:room.x, origY:room.y};
+      updateContextButtons();
+      renderAll();
+    } else {
+      selection = null;
+      updateContextButtons();
+      renderAll();
+    }
+  });
+
+  canvas.addEventListener('pointermove', (e)=>{
+    if (!drag) return;
+    const p = getPos(e);
+    if (drag.type === 'newroom'){
+      const x = Math.min(drag.start.x, snap(p.x));
+      const y = Math.min(drag.start.y, snap(p.y));
+      const w = Math.abs(snap(p.x)-drag.start.x);
+      const h = Math.abs(snap(p.y)-drag.start.y);
+      drag.preview = {x,y,w,h};
+      renderAll(drag.preview);
+    } else if (drag.type === 'move'){
+      const dx = snap(p.x-drag.startX), dy = snap(p.y-drag.startY);
+      drag.room.x = clamp(drag.origX+dx, 0, LOGICAL_W-drag.room.w);
+      drag.room.y = clamp(drag.origY+dy, 0, LOGICAL_H-drag.room.h);
+      renderAll();
+    } else if (drag.type === 'resize'){
+      const r = drag.room, o = drag.orig;
+      let {x,y,w,h} = o;
+      if (drag.handle.includes('n')){ const ny = snap(p.y); h = o.y+o.h-ny; y = ny; }
+      if (drag.handle.includes('s')){ h = snap(p.y)-o.y; }
+      if (drag.handle.includes('w')){ const nx = snap(p.x); w = o.x+o.w-nx; x = nx; }
+      if (drag.handle.includes('e')){ w = snap(p.x)-o.x; }
+      r.x=x; r.y=y;
+      r.w=Math.max(MIN_ROOM,w); r.h=Math.max(MIN_ROOM,h);
+      renderAll();
+    }
+  });
+
+  function endDrag(){
+    if (drag && drag.type==='newroom' && drag.preview){
+      const {x,y,w,h} = drag.preview;
+      if (w>=MIN_ROOM && h>=MIN_ROOM){
+        const room = {id:newId(), x, y, w, h, type:'overig', label:'Overig', doors:[], windows:[]};
+        floors[currentFloor].rooms.push(room);
+        selection = {kind:'room', roomId:room.id};
+        updateContextButtons();
+        openLabelSheet();
+      } else {
+        history.pop(); // niets getekend, snapshot terugdraaien
+      }
+    }
+    drag = null;
+    renderAll();
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  function updateContextButtons(){
+    const has = !!selection;
+    labelBtn.style.display = (has && selection.kind==='room') ? 'inline-block' : 'none';
+    deleteBtn.style.display = has ? 'inline-block' : 'none';
+  }
+
+  // ── Tekenfuncties (herbruikbaar voor canvas + export) ──────────────────
+  function drawGrid(c){
+    c.strokeStyle = '#EEF1F0'; c.lineWidth = 1;
+    for (let x=0; x<=LOGICAL_W; x+=20){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,LOGICAL_H); c.stroke(); }
+    for (let y=0; y<=LOGICAL_H; y+=20){ c.beginPath(); c.moveTo(0,y); c.lineTo(LOGICAL_W,y); c.stroke(); }
+  }
+
+  function drawRoom(c, room, isSelected){
+    const preset = presetFor(room.type);
+    c.fillStyle = preset.fill;
+    c.fillRect(room.x, room.y, room.w, room.h);
+    c.strokeStyle = isSelected ? '#1F7A64' : preset.stroke;
+    c.lineWidth = isSelected ? 3 : 2;
+    c.strokeRect(room.x, room.y, room.w, room.h);
+
+    c.fillStyle = '#3A3A3A';
+    c.font = '11px Arial';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    wrapText(c, room.label || '', room.x+room.w/2, room.y+room.h/2, room.w-8);
+
+    (room.doors||[]).forEach(d=> drawOpening(c, room, d, 'door'));
+    (room.windows||[]).forEach(w=> drawOpening(c, room, w, 'window'));
+
+    if (isSelected){
+      c.fillStyle = '#1F7A64';
+      corners(room).forEach(h=>{
+        c.beginPath(); c.arc(h.x, h.y, 4.5, 0, Math.PI*2); c.fill();
+      });
+    }
+  }
+
+  function wrapText(c, text, cx, cy, maxWidth){
+    const words = text.split(' ');
+    let lines = [], line = '';
+    words.forEach(w=>{
+      const test = line ? line+' '+w : w;
+      if (c.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+      else line = test;
+    });
+    if (line) lines.push(line);
+    const lh = 13;
+    const startY = cy - ((lines.length-1)*lh)/2;
+    lines.forEach((l,i)=> c.fillText(l, cx, startY+i*lh));
+  }
+
+  function drawOpening(c, room, opening, kind){
+    const s = SIDES[opening.side](room);
+    const dx = s.b.x-s.a.x, dy = s.b.y-s.a.y;
+    const center = {x: s.a.x+dx*opening.pos, y: s.a.y+dy*opening.pos};
+    const along = s.along, normal = s.normal;
+    const hinge = {x: center.x-along.x*GAP_LEN/2, y: center.y-along.y*GAP_LEN/2};
+    const arcStart = {x: hinge.x+along.x*GAP_LEN, y: hinge.y+along.y*GAP_LEN};
+
+    // muur "openen" (witte rechthoek over de lijn)
+    c.save();
+    c.fillStyle = '#FFFFFF';
+    c.beginPath();
+    c.moveTo(hinge.x-normal.x*3, hinge.y-normal.y*3);
+    c.lineTo(arcStart.x-normal.x*3, arcStart.y-normal.y*3);
+    c.lineTo(arcStart.x+normal.x*3, arcStart.y+normal.y*3);
+    c.lineTo(hinge.x+normal.x*3, hinge.y+normal.y*3);
+    c.closePath(); c.fill();
+    c.restore();
+
+    if (kind === 'window'){
+      c.strokeStyle = '#5B8DEF'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(hinge.x,hinge.y); c.lineTo(arcStart.x,arcStart.y); c.stroke();
+    } else {
+      const leafEnd = {x: hinge.x+normal.x*GAP_LEN, y: hinge.y+normal.y*GAP_LEN};
+      c.strokeStyle = '#3A3A3A'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(hinge.x,hinge.y); c.lineTo(leafEnd.x,leafEnd.y); c.stroke();
+      const a1 = Math.atan2(along.y, along.x);
+      const a2 = Math.atan2(normal.y, normal.x);
+      let diff = a2-a1;
+      while(diff>Math.PI) diff-=2*Math.PI;
+      while(diff<=-Math.PI) diff+=2*Math.PI;
+      c.beginPath();
+      c.arc(hinge.x, hinge.y, GAP_LEN, a1, a2, diff<0);
+      c.stroke();
+    }
+  }
+
+  function drawFloorContent(c, floor, previewRect){
+    c.clearRect(0,0,LOGICAL_W,LOGICAL_H);
+    drawGrid(c);
+    floor.rooms.forEach(room=>{
+      const isSel = selection && selection.kind==='room' && selection.roomId===room.id;
+      drawRoom(c, room, !!isSel);
+    });
+    if (previewRect){
+      c.strokeStyle = '#1F7A64'; c.lineWidth = 2; c.setLineDash([5,4]);
+      c.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
+      c.setLineDash([]);
+    }
+  }
+
+  function renderAll(previewRect){
+    renderFloorTabs();
+    ctx.save();
+    ctx.scale(LIVE_SCALE, LIVE_SCALE);
+    drawFloorContent(ctx, floors[currentFloor], previewRect);
+    ctx.restore();
+  }
+
+  // ── Export naar PNG ──────────────────────────────────────────────────────
+  function exportPNG(){
+    const propName = document.getElementById('propName').value.trim() || 'Woning';
+    const padX = 24, titleH = 34, legendH = 26, gapBetween = 18;
+    const floorPxW = LOGICAL_W*EXPORT_SCALE;
+    const floorPxH = LOGICAL_H*EXPORT_SCALE;
+    const blockH = titleH + floorPxH + legendH + gapBetween;
+
+    const out = document.createElement('canvas');
+    out.width = floorPxW + padX*2;
+    out.height = blockH*floors.length + 20;
+    const octx = out.getContext('2d');
+    octx.fillStyle = '#FFFFFF';
+    octx.fillRect(0,0,out.width,out.height);
+
+    floors.forEach((floor, i)=>{
+      const top = i*blockH + 16;
+      octx.fillStyle = '#1F7A64';
+      octx.font = 'bold 18px Arial';
+      octx.textAlign = 'left';
+      octx.fillText(propName + '  —  ' + floor.name, padX, top+16);
+
+      octx.save();
+      octx.translate(padX, top+titleH);
+      octx.scale(EXPORT_SCALE, EXPORT_SCALE);
+      drawFloorContent(octx, floor, null);
+      octx.strokeStyle = '#DADFDD'; octx.lineWidth = 1/EXPORT_SCALE;
+      octx.strokeRect(0,0,LOGICAL_W,LOGICAL_H);
+      octx.restore();
+
+      const legendY = top+titleH+floorPxH+18;
+      octx.strokeStyle = '#3A3A3A'; octx.lineWidth = 1.5;
+      octx.beginPath(); octx.moveTo(padX, legendY); octx.lineTo(padX+14, legendY-10); octx.stroke();
+      octx.beginPath(); octx.arc(padX, legendY, 14, -Math.PI/2, 0); octx.stroke();
+      octx.fillStyle = '#3A3A3A'; octx.font = '12px Arial'; octx.textAlign='left';
+      octx.fillText('deur', padX+22, legendY+4);
+
+      octx.strokeStyle = '#5B8DEF'; octx.lineWidth = 3;
+      octx.beginPath(); octx.moveTo(padX+80, legendY); octx.lineTo(padX+106, legendY); octx.stroke();
+      octx.fillStyle = '#3A3A3A';
+      octx.fillText('raam', padX+112, legendY+4);
+    });
+
+    const link = document.createElement('a');
+    const safeName = propName.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'') || 'plattegrond';
+    link.download = 'plattegrond_' + safeName + '.png';
+    link.href = out.toDataURL('image/png');
+    link.click();
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  renderAll();
+})();
+</script>
+</body>
+</html>
