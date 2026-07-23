@@ -1,379 +1,707 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>VfY Plattegrond Tool</title>
+<title>Villa for You — Floor Plan Sketch</title>
 <style>
   :root{
     --teal:#2FA98C;
     --teal-dark:#1F7A64;
-    --bg:#F5F6F7;
     --ink:#26312E;
-    --line:#DADFDD;
+    --muted:#6B7876;
+    --line:#DCE1DF;
+    --bg:#F4F6F5;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{
-    margin:0;padding:0;height:100%;
+    margin:0;padding:0;height:100%;overflow:hidden;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    background:var(--bg); color:var(--ink);
+    background:var(--bg);color:var(--ink);
     overscroll-behavior:none;
   }
+  button{font-family:inherit;}
   #app{
-    display:flex; flex-direction:column;
-    height:100dvh; max-width:520px; margin:0 auto;
-    background:#fff;
+    display:flex;flex-direction:column;
+    height:100vh;height:100dvh;max-width:560px;margin:0 auto;background:#fff;
   }
-  header{
-    padding:10px 12px 8px; border-bottom:1px solid var(--line); flex-shrink:0;
+
+  /* ── Start screen ─────────────────────────────────────────── */
+  #start{
+    display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:560px;margin:0 auto;
+    background:#fff;padding:28px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;
   }
+  #start h1{font-size:21px;margin:0 0 4px;font-weight:700;}
+  #start p.sub{font-size:13px;color:var(--muted);margin:0 0 26px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;}
+  .field input{
+    width:100%;padding:11px 12px;font-size:16px;border:1px solid var(--line);
+    border-radius:10px;background:#fff;color:var(--ink);
+  }
+  .field input:focus{outline:none;border-color:var(--teal);}
+  .field .note{font-size:11.5px;color:var(--muted);margin-top:5px;}
+  .shapeRow{display:flex;gap:10px;}
+  .shapeBtn{
+    flex:1;padding:12px 6px;border:1.5px solid var(--line);border-radius:12px;background:#fff;
+    display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:var(--ink);
+  }
+  .shapeBtn.active{border-color:var(--teal);background:#EEF9F6;}
+  .shapeBox{border:2px solid var(--muted);border-radius:2px;}
+  .shapeBtn.active .shapeBox{border-color:var(--teal-dark);}
+  .primaryBtn{
+    width:100%;padding:14px;font-size:16px;font-weight:600;border:none;border-radius:12px;
+    background:var(--teal);color:#fff;margin-top:8px;
+  }
+  .ghostBtn{
+    width:100%;padding:12px;font-size:14px;border:1px solid var(--line);border-radius:12px;
+    background:#fff;color:var(--muted);margin-top:10px;
+  }
+
+  /* ── Editor ───────────────────────────────────────────────── */
+  header{padding:8px 10px 6px;border-bottom:1px solid var(--line);flex-shrink:0;}
+  #idRow{display:flex;gap:8px;align-items:center;}
   #propName{
-    width:100%; border:none; border-bottom:2px solid var(--teal);
-    font-size:17px; font-weight:600; padding:4px 2px; color:var(--ink);
-    background:transparent;
+    flex:1 1 auto;min-width:0;border:none;border-bottom:2px solid var(--teal);
+    font-size:15px;font-weight:600;padding:3px 2px;background:transparent;color:var(--ink);
   }
-  #propName:focus{outline:none;}
-  #floorRow{
-    display:flex; align-items:center; gap:6px; margin-top:8px;
-    overflow-x:auto; padding-bottom:2px;
+  #accoId{
+    flex:0 0 112px;border:none;border-bottom:2px solid var(--line);
+    font-size:13px;padding:3px 2px;background:transparent;color:var(--muted);
   }
+  #propName:focus,#accoId:focus{outline:none;border-bottom-color:var(--teal-dark);}
+  #menuBtn{
+    flex:0 0 auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
+    background:#fff;color:var(--muted);font-size:15px;line-height:1;
+  }
+  #floorRow{display:flex;align-items:center;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:2px;}
+  #floorRow::-webkit-scrollbar{display:none;}
   .floorTab{
-    flex:0 0 auto; padding:6px 12px; border-radius:16px; font-size:13px;
-    border:1px solid var(--line); background:#fff; white-space:nowrap;
+    flex:0 0 auto;padding:6px 12px;border-radius:16px;font-size:13px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);white-space:nowrap;
   }
-  .floorTab.active{ background:var(--teal); color:#fff; border-color:var(--teal); }
-  #addFloorBtn{
-    flex:0 0 auto; width:30px; height:30px; border-radius:50%; border:1px solid var(--teal);
-    background:#fff; color:var(--teal); font-size:16px; line-height:1;
+  .floorTab.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .roundBtn{
+    flex:0 0 auto;height:30px;padding:0 11px;border-radius:15px;border:1px solid var(--teal);
+    background:#fff;color:var(--teal);font-size:12px;line-height:1;white-space:nowrap;
   }
-  #hint{
-    font-size:12px; color:#6b7876; padding:6px 12px 0; flex-shrink:0; min-height:16px;
+  #infoLine{
+    font-size:11.5px;color:var(--muted);padding:5px 12px 0;flex-shrink:0;min-height:17px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  #modeRow{
-    display:flex; gap:6px; padding:8px 12px; flex-shrink:0;
-  }
+  #modeRow{display:flex;gap:5px;padding:7px 10px;flex-shrink:0;}
   .modeBtn{
-    flex:1; padding:9px 4px; font-size:13px; border-radius:10px;
-    border:1px solid var(--line); background:#fff; color:var(--ink);
+    flex:1;padding:8px 2px;font-size:12px;border-radius:10px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);
   }
-  .modeBtn.active{ background:var(--teal-dark); color:#fff; border-color:var(--teal-dark); }
+  .modeBtn.active{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark);}
   #canvasWrap{
-    flex:1; min-height:0; display:flex; align-items:flex-start; justify-content:center;
-    padding:4px 10px; overflow:hidden;
+    flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+    padding:4px 8px;overflow:hidden;
   }
   #canvas{
-    width:100%; max-width:440px; aspect-ratio:320/460;
-    background:#fff; border:1px solid var(--line); border-radius:6px;
-    touch-action:none; display:block;
+    background:#fff;border:1px solid var(--line);border-radius:6px;
+    touch-action:none;display:block;
   }
   #bottomBar{
-    display:flex; align-items:center; gap:8px; padding:10px 12px;
-    border-top:1px solid var(--line); flex-shrink:0;
-    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;gap:5px;padding:8px 10px;
+    border-top:1px solid var(--line);flex-shrink:0;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
   }
-  .barBtn{
-    padding:10px 14px; font-size:13px; border-radius:10px; border:1px solid var(--line);
-    background:#fff; color:var(--ink);
+  .toolBtn{
+    flex:0 0 auto;min-width:52px;padding:7px 4px;border-radius:10px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:2px;
+    font-size:10px;line-height:1.1;
   }
-  .barBtn:disabled{ opacity:.4; }
-  .barBtn.danger{ border-color:#D9534F; color:#D9534F; }
+  .toolBtn .ic{font-size:15px;line-height:1;}
+  .toolBtn.danger{border-color:#D9534F;color:#D9534F;}
   #exportBtn{
-    margin-left:auto; background:var(--teal); color:#fff; border:none;
-    padding:11px 16px; font-size:14px; font-weight:600; border-radius:10px;
+    margin-left:auto;background:var(--teal);color:#fff;border:none;
+    padding:11px 16px;font-size:14px;font-weight:600;border-radius:10px;flex:0 0 auto;
   }
+  #exportBtn:disabled{opacity:.55;}
+
+  /* ── Sheets ───────────────────────────────────────────────── */
   .sheet{
-    position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto;
-    background:#fff; border-top:1px solid var(--line); border-radius:16px 16px 0 0;
+    position:fixed;left:0;right:0;bottom:0;max-width:560px;margin:0 auto;background:#fff;
+    border-top:1px solid var(--line);border-radius:16px 16px 0 0;
     padding:14px 14px calc(14px + env(safe-area-inset-bottom));
-    box-shadow:0 -4px 24px rgba(0,0,0,.15);
-    transform:translateY(100%); transition:transform .18s ease-out; z-index:20;
+    box-shadow:0 -4px 24px rgba(0,0,0,.16);
+    transform:translateY(110%);transition:transform .18s ease-out;z-index:20;
+    max-height:82vh;overflow-y:auto;
   }
-  .sheet.open{ transform:translateY(0); }
-  .sheetTitle{ font-size:14px; font-weight:600; margin-bottom:10px; }
-  .presetGrid{ display:flex; flex-wrap:wrap; gap:8px; }
-  .presetChip{
-    padding:9px 12px; border-radius:10px; font-size:13px; border:1.5px solid var(--line); background:#fff;
+  .sheet.open{transform:translateY(0);}
+  .sheetTitle{font-size:14px;font-weight:600;margin-bottom:10px;}
+  .sheetGroup{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.4px;margin:14px 0 2px;padding:0 10px;}
+  .presetGrid{display:flex;flex-wrap:wrap;gap:8px;}
+  .presetChip{padding:9px 12px;border-radius:10px;font-size:13px;border:1.5px solid var(--line);background:#fff;color:var(--ink);}
+  .presetChip.custom{border-style:dashed;}
+  .menuItem{
+    display:block;width:100%;text-align:left;padding:13px 10px;font-size:15px;
+    border:none;border-bottom:1px solid var(--line);background:#fff;color:var(--ink);
   }
-  .presetChip.custom{ border-style:dashed; }
-  #overlay{
-    position:fixed; inset:0; background:rgba(0,0,0,.25); z-index:10; display:none;
-  }
-  #overlay.show{ display:block; }
+  .menuItem:last-child{border-bottom:none;}
+  .menuItem.danger{color:#D9534F;}
+  .menuItem .sub{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;}
+  #overlay{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:10;display:none;}
+  #overlay.show{display:block;}
 </style>
 </head>
 <body>
-<div id="app">
+
+<!-- ── Start screen ───────────────────────────────────────────── -->
+<div id="start">
+  <h1>Floor plan sketch</h1>
+  <p class="sub">Villa for You — draw a simple plan while you are on location.</p>
+
+  <div class="field">
+    <label for="startName">Property name</label>
+    <input id="startName" type="text" autocomplete="off">
+  </div>
+  <div class="field">
+    <label for="startAcco">Acco ID</label>
+    <input id="startAcco" type="text" autocomplete="off" autocapitalize="characters">
+    <div class="note">Used for the file name only. It does not appear on the plan.</div>
+  </div>
+  <div class="field">
+    <label>Drawing area</label>
+    <div class="shapeRow" id="shapeRow"></div>
+  </div>
+
+  <button class="primaryBtn" id="startBtn">Start drawing</button>
+  <button class="ghostBtn" id="resumeBtn" style="display:none">Resume saved plan</button>
+</div>
+
+<!-- ── Editor ─────────────────────────────────────────────────── -->
+<div id="app" style="display:none">
   <header>
-    <input id="propName" type="text" value="Nieuwe woning" placeholder="Naam van de woning">
+    <div id="idRow">
+      <input id="propName" type="text" placeholder="Property name" autocomplete="off">
+      <input id="accoId" type="text" placeholder="Acco ID" autocomplete="off" autocapitalize="characters">
+      <button id="menuBtn" aria-label="Options">&#9776;</button>
+    </div>
     <div id="floorRow"></div>
   </header>
 
-  <div id="hint"></div>
+  <div id="infoLine"></div>
 
   <div id="modeRow">
-    <button class="modeBtn" data-mode="room">🏠 Kamer</button>
-    <button class="modeBtn" data-mode="door">🚪 Deur</button>
-    <button class="modeBtn" data-mode="window">🪟 Raam</button>
-    <button class="modeBtn" data-mode="select">↔ Verplaatsen</button>
+    <button class="modeBtn" data-mode="room">Room</button>
+    <button class="modeBtn" data-mode="door">Door</button>
+    <button class="modeBtn" data-mode="window">Window</button>
+    <button class="modeBtn" data-mode="select">Move</button>
   </div>
 
-  <div id="canvasWrap">
-    <canvas id="canvas"></canvas>
-  </div>
+  <div id="canvasWrap"><canvas id="canvas"></canvas></div>
 
   <div id="bottomBar">
-    <button class="barBtn" id="undoBtn">↶ Ongedaan maken</button>
-    <button class="barBtn" id="labelBtn" style="display:none">Label</button>
-    <button class="barBtn danger" id="deleteBtn" style="display:none">Verwijder</button>
-    <button id="exportBtn">Exporteren</button>
+    <button class="toolBtn" id="undoBtn"><span class="ic">&#8630;</span>Undo</button>
+    <button class="toolBtn" id="labelBtn" style="display:none"><span class="ic">&#9998;</span>Label</button>
+    <button class="toolBtn" id="copyBtn" style="display:none"><span class="ic">&#10063;</span>Copy</button>
+    <button class="toolBtn danger" id="deleteBtn" style="display:none"><span class="ic">&#10005;</span>Delete</button>
+    <button id="exportBtn">Export</button>
   </div>
 </div>
 
 <div id="overlay"></div>
+
 <div class="sheet" id="labelSheet">
-  <div class="sheetTitle">Kies het type ruimte</div>
+  <div class="sheetTitle">What kind of room is this?</div>
   <div class="presetGrid" id="presetGrid"></div>
+</div>
+
+<div class="sheet" id="menuSheet">
+  <div class="sheetTitle" id="menuTitle">Options</div>
+  <div class="sheetGroup" id="floorGroupLabel">Floor</div>
+  <button class="menuItem" id="mDuplicateFloor">Duplicate this floor<span class="sub">Copies every room to a new floor</span></button>
+  <button class="menuItem" id="mRenameFloor">Rename this floor</button>
+  <button class="menuItem danger" id="mDeleteFloor">Delete this floor</button>
+  <div class="sheetGroup">Plan</div>
+  <button class="menuItem" id="mScale">Set scale<span class="sub" id="mScaleSub"></span></button>
+  <button class="menuItem" id="mShape">Change drawing area<span class="sub" id="mShapeSub"></span></button>
+  <button class="menuItem danger" id="mNew">Start a new plan</button>
 </div>
 
 <script>
 (function(){
   "use strict";
 
-  // ── Constanten ──────────────────────────────────────────────────────────
-  const LOGICAL_W = 320, LOGICAL_H = 460;
-  const LIVE_SCALE = 3;
-  const EXPORT_SCALE = 2.5;
-  const SNAP = 10;
-  const MIN_ROOM = 30;
-  const GAP_LEN = 26;      // lengte van deur/raam-opening
-  const EDGE_HIT = 16;     // hoeveel logische px van een muur telt als "raak"
+  // ─── Constants ─────────────────────────────────────────────────────────
+  var SHAPES = {
+    landscape: {w:400, h:300, label:'Landscape', bw:34, bh:26},
+    portrait:  {w:300, h:400, label:'Portrait',  bw:26, bh:34},
+    square:    {w:350, h:350, label:'Square',    bw:30, bh:30}
+  };
+  var EXPORT_W = 2048, EXPORT_H = 1536, EXPORT_MARGIN = 64, MAX_EXPORT_SCALE = 8;
+  var SNAP = 10, MIN_ROOM = 30, GAP_LEN = 26, EDGE_HIT = 16, CROP_PAD = 18;
+  var STORE_KEY = 'vfy_floorplan_v1';
 
-  const PRESETS = [
-    {type:'woonkamer', label:'Woonkamer', fill:'#FDF3E7', stroke:'#D9A94F'},
-    {type:'keuken',    label:'Keuken',    fill:'#FFEFE0', stroke:'#E08B3B'},
-    {type:'slaapkamer',label:'Slaapkamer',fill:'#EAF1FB', stroke:'#5B8DEF'},
-    {type:'badkamer',  label:'Badkamer',  fill:'#E7F7F4', stroke:'#2FA98C'},
-    {type:'toilet',    label:'Toilet',    fill:'#EAF7F3', stroke:'#2FA98C'},
-    {type:'gang',      label:'Gang/Hal',  fill:'#F2F2F2', stroke:'#9A9A9A'},
-    {type:'terras',    label:'Terras/Balkon', fill:'#EFF8EC', stroke:'#6FAE5C'},
-    {type:'berging',   label:'Berging',   fill:'#F0F0F0', stroke:'#8C8C8C'},
-    {type:'overig',    label:'Overig',    fill:'#FFFFFF', stroke:'#666666'}
+  var PRESETS = [
+    {type:'living_room', label:'Living room',      fill:'#FDF3E7', stroke:'#D9A94F', numbered:false},
+    {type:'kitchen',     label:'Kitchen',          fill:'#FFEFE0', stroke:'#E08B3B', numbered:false},
+    {type:'bedroom',     label:'Bedroom',          fill:'#EAF1FB', stroke:'#5B8DEF', numbered:true},
+    {type:'bathroom',    label:'Bathroom',         fill:'#E7F7F4', stroke:'#2FA98C', numbered:true},
+    {type:'toilet',      label:'Toilet',           fill:'#EAF7F3', stroke:'#4FBFA5', numbered:true},
+    {type:'hallway',     label:'Hallway',          fill:'#F2F2F2', stroke:'#9A9A9A', numbered:false},
+    {type:'terrace',     label:'Terrace/Balcony',  fill:'#EFF8EC', stroke:'#6FAE5C', numbered:false},
+    {type:'storage',     label:'Storage',          fill:'#F0F0F0', stroke:'#8C8C8C', numbered:false},
+    {type:'stairs',      label:'Stairs',           fill:'#EDEFEE', stroke:'#7A8582', numbered:false},
+    {type:'other',       label:'Other',            fill:'#FFFFFF', stroke:'#666666', numbered:false}
   ];
-  function presetFor(type){ return PRESETS.find(p=>p.type===type) || PRESETS[PRESETS.length-1]; }
+  var PLURALS = {
+    living_room:'living rooms', kitchen:'kitchens', bedroom:'bedrooms', bathroom:'bathrooms',
+    toilet:'toilets', hallway:'hallways', terrace:'terraces/balconies', storage:'storage rooms',
+    stairs:'staircases', other:'other rooms'
+  };
+  var SUMMARY_ORDER = ['bedroom','bathroom','toilet','living_room','kitchen','terrace','hallway','storage','stairs','other'];
 
-  // ── State ───────────────────────────────────────────────────────────────
-  let floors = [ newFloor("Begane grond") ];
-  let currentFloor = 0;
-  let mode = "room";
-  let selection = null; // {kind:'room'|'door'|'window', roomId, index?}
-  let history = [];
+  function presetFor(type){
+    for (var i=0;i<PRESETS.length;i++){ if (PRESETS[i].type===type) return PRESETS[i]; }
+    return PRESETS[PRESETS.length-1];
+  }
 
-  function newFloor(name){ return { name, rooms: [] }; }
+  // ─── State ─────────────────────────────────────────────────────────────
+  var shapeKey = 'landscape';
+  var LW = SHAPES.landscape.w, LH = SHAPES.landscape.h;
+  var floors = [newFloor('Ground floor')];
+  var currentFloor = 0;
+  var mode = 'room';
+  var selection = null;
+  var metersPerUnit = 0;      // 0 = no scale set, so no dimensions are shown
+  var history = [];
+  var drag = null;
+  var drawScale = 1;
+  var hintTimer = null, showHintUntil = 0;
+
+  function newFloor(name){ return {name:name, rooms:[]}; }
   function newId(){ return 'r'+Math.random().toString(36).slice(2,9); }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
+  function snap(v){ return Math.round(v/SNAP)*SNAP; }
 
+  // ─── DOM ───────────────────────────────────────────────────────────────
+  var startScreen = document.getElementById('start');
+  var app = document.getElementById('app');
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var canvasWrap = document.getElementById('canvasWrap');
+  var floorRow = document.getElementById('floorRow');
+  var infoLine = document.getElementById('infoLine');
+  var propName = document.getElementById('propName');
+  var accoId = document.getElementById('accoId');
+  var labelBtn = document.getElementById('labelBtn');
+  var copyBtn = document.getElementById('copyBtn');
+  var deleteBtn = document.getElementById('deleteBtn');
+  var exportBtn = document.getElementById('exportBtn');
+  var overlay = document.getElementById('overlay');
+  var labelSheet = document.getElementById('labelSheet');
+  var menuSheet = document.getElementById('menuSheet');
+  var presetGrid = document.getElementById('presetGrid');
+
+  // ─── Persistence ───────────────────────────────────────────────────────
+  var saveTimer = null;
+  function scheduleSave(){
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 400);
+  }
+  function saveNow(){
+    try{
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        v:2, shape:shapeKey, name:propName.value, acco:accoId.value,
+        mpu:metersPerUnit, floors:floors, currentFloor:currentFloor, savedAt:Date.now()
+      }));
+    }catch(e){ /* private mode or quota full: drawing keeps working, it just is not persisted */ }
+  }
+  function loadSaved(){
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (!data || !data.floors || !data.floors.length) return null;
+      return data;
+    }catch(e){ return null; }
+  }
+  function clearSaved(){ try{ localStorage.removeItem(STORE_KEY); }catch(e){} }
+
+  // ─── Start screen ──────────────────────────────────────────────────────
+  var shapeRow = document.getElementById('shapeRow');
+  Object.keys(SHAPES).forEach(function(key){
+    var s = SHAPES[key];
+    var btn = document.createElement('button');
+    btn.className = 'shapeBtn' + (key===shapeKey ? ' active' : '');
+    btn.dataset.shape = key;
+    var box = document.createElement('div');
+    box.className = 'shapeBox';
+    box.style.width = s.bw+'px'; box.style.height = s.bh+'px';
+    btn.appendChild(box);
+    btn.appendChild(document.createTextNode(s.label));
+    btn.addEventListener('click', function(){
+      shapeKey = key;
+      Array.prototype.forEach.call(shapeRow.children, function(c){
+        c.classList.toggle('active', c.dataset.shape===key);
+      });
+    });
+    shapeRow.appendChild(btn);
+  });
+
+  var saved = loadSaved();
+  if (saved){
+    var resumeBtn = document.getElementById('resumeBtn');
+    resumeBtn.style.display = 'block';
+    resumeBtn.textContent = 'Resume: ' + (saved.name || 'unnamed plan');
+    resumeBtn.addEventListener('click', function(){
+      shapeKey = SHAPES[saved.shape] ? saved.shape : 'landscape';
+      LW = SHAPES[shapeKey].w; LH = SHAPES[shapeKey].h;
+      floors = saved.floors;
+      currentFloor = Math.min(saved.currentFloor||0, floors.length-1);
+      metersPerUnit = saved.mpu || 0;
+      propName.value = saved.name || '';
+      accoId.value = saved.acco || '';
+      openEditor();
+    });
+    document.getElementById('startName').value = saved.name || '';
+    document.getElementById('startAcco').value = saved.acco || '';
+  }
+
+  document.getElementById('startBtn').addEventListener('click', function(){
+    LW = SHAPES[shapeKey].w; LH = SHAPES[shapeKey].h;
+    floors = [newFloor('Ground floor')];
+    currentFloor = 0; history = []; selection = null; metersPerUnit = 0;
+    propName.value = document.getElementById('startName').value.trim();
+    accoId.value = document.getElementById('startAcco').value.trim().toUpperCase();
+    clearSaved();
+    openEditor();
+  });
+
+  function openEditor(){
+    startScreen.style.display = 'none';
+    app.style.display = 'flex';
+    renderTabs();
+    fitCanvas();
+    setMode('room');
+  }
+  function backToStart(){
+    app.style.display = 'none';
+    startScreen.style.display = 'flex';
+    document.getElementById('resumeBtn').style.display = 'none';
+  }
+
+  propName.addEventListener('input', scheduleSave);
+  accoId.addEventListener('input', scheduleSave);
+
+  // ─── Canvas fitting: always fully visible ──────────────────────────────
+  function fitCanvas(){
+    var box = canvasWrap.getBoundingClientRect();
+    var availW = Math.max(80, box.width - 4);
+    var availH = Math.max(80, box.height - 4);
+    var ratio = LW/LH;
+    var w = availW, h = w/ratio;
+    if (h > availH){ h = availH; w = h*ratio; }
+    var dpr = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.style.width = w+'px';
+    canvas.style.height = h+'px';
+    canvas.width = Math.round(w*dpr);
+    canvas.height = Math.round(h*dpr);
+    drawScale = canvas.width/LW;
+    render();
+  }
+  if (window.ResizeObserver){
+    new ResizeObserver(function(){ if (app.style.display!=='none') fitCanvas(); }).observe(canvasWrap);
+  }
+  window.addEventListener('resize', function(){ if (app.style.display!=='none') fitCanvas(); });
+  window.addEventListener('orientationchange', function(){ setTimeout(fitCanvas, 250); });
+
+  // ─── History ───────────────────────────────────────────────────────────
   function snapshot(){
     history.push(JSON.stringify(floors));
     if (history.length > 60) history.shift();
   }
   function undo(){
-    if (!history.length) return;
+    if (!history.length){ flashHint('Nothing left to undo.'); return; }
     floors = JSON.parse(history.pop());
     selection = null;
     if (currentFloor >= floors.length) currentFloor = floors.length-1;
-    renderAll();
+    updateContextButtons();
+    renderTabs(); render();
   }
+  document.getElementById('undoBtn').addEventListener('click', undo);
 
-  // ── DOM refs ────────────────────────────────────────────────────────────
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const floorRow = document.getElementById('floorRow');
-  const hint = document.getElementById('hint');
-  const labelBtn = document.getElementById('labelBtn');
-  const deleteBtn = document.getElementById('deleteBtn');
-  const undoBtn = document.getElementById('undoBtn');
-  const overlay = document.getElementById('overlay');
-  const labelSheet = document.getElementById('labelSheet');
-  const presetGrid = document.getElementById('presetGrid');
+  // ─── Sheets ────────────────────────────────────────────────────────────
+  function openSheet(el){
+    labelSheet.classList.remove('open');
+    menuSheet.classList.remove('open');
+    el.classList.add('open');
+    overlay.classList.add('show');
+  }
+  function closeSheets(){
+    labelSheet.classList.remove('open');
+    menuSheet.classList.remove('open');
+    overlay.classList.remove('show');
+  }
+  overlay.addEventListener('click', closeSheets);
 
-  canvas.width = LOGICAL_W*LIVE_SCALE;
-  canvas.height = LOGICAL_H*LIVE_SCALE;
-
-  // ── Presets renderen in het label-sheet ────────────────────────────────
-  PRESETS.forEach(p=>{
-    const chip = document.createElement('button');
+  PRESETS.forEach(function(p){
+    var chip = document.createElement('button');
     chip.className = 'presetChip';
     chip.textContent = p.label;
     chip.style.background = p.fill;
     chip.style.borderColor = p.stroke;
-    chip.addEventListener('click', ()=> applyPreset(p));
+    chip.addEventListener('click', function(){ applyPreset(p); });
     presetGrid.appendChild(chip);
   });
-  const customChip = document.createElement('button');
+  var customChip = document.createElement('button');
   customChip.className = 'presetChip custom';
-  customChip.textContent = '+ Eigen naam';
-  customChip.addEventListener('click', ()=>{
-    const room = findRoom(selection && selection.roomId);
-    if (!room) return closeLabelSheet();
-    const val = prompt("Naam van de ruimte:", room.label || "");
-    if (val && val.trim()){
-      snapshot();
-      room.label = val.trim();
-      renderAll();
-    }
-    closeLabelSheet();
+  customChip.textContent = '+ Custom name';
+  customChip.addEventListener('click', function(){
+    var room = findRoom(selection && selection.roomId);
+    if (!room){ closeSheets(); return; }
+    var val = prompt('Name of this room:', room.label || '');
+    if (val && val.trim()){ snapshot(); room.label = val.trim(); render(); }
+    closeSheets();
   });
   presetGrid.appendChild(customChip);
 
   function applyPreset(preset){
-    const room = findRoom(selection && selection.roomId);
-    if (!room) return closeLabelSheet();
+    var room = findRoom(selection && selection.roomId);
+    if (!room){ closeSheets(); return; }
     snapshot();
     room.type = preset.type;
-    if (['slaapkamer','badkamer','toilet'].includes(preset.type)){
-      const count = floors[currentFloor].rooms.filter(r=>r.type===preset.type && r.id!==room.id).length;
-      room.label = preset.label + ' ' + (count+1);
-    } else {
-      room.label = preset.label;
-    }
-    closeLabelSheet();
-    renderAll();
+    room.label = preset.numbered ? preset.label + ' ' + nextNumber(preset.type, room.id) : preset.label;
+    closeSheets();
+    render();
   }
-  function openLabelSheet(){ labelSheet.classList.add('open'); overlay.classList.add('show'); }
-  function closeLabelSheet(){ labelSheet.classList.remove('open'); overlay.classList.remove('show'); }
-  overlay.addEventListener('click', closeLabelSheet);
+  function nextNumber(type, excludeId){
+    var n = 0;
+    floors[currentFloor].rooms.forEach(function(r){
+      if (r.type===type && r.id!==excludeId) n++;
+    });
+    return n+1;
+  }
 
-  // ── Floor tabs ──────────────────────────────────────────────────────────
-  function renderFloorTabs(){
+  // ─── Floor tabs ────────────────────────────────────────────────────────
+  function renderTabs(){
     floorRow.innerHTML = '';
-    floors.forEach((f,i)=>{
-      const tab = document.createElement('button');
+    floors.forEach(function(f,i){
+      var tab = document.createElement('button');
       tab.className = 'floorTab' + (i===currentFloor ? ' active' : '');
       tab.textContent = f.name;
-      tab.addEventListener('click', ()=>{ currentFloor = i; selection=null; renderAll(); });
-      tab.addEventListener('dblclick', ()=>{
-        const val = prompt("Naam van deze verdieping:", f.name);
-        if (val && val.trim()){ snapshot(); f.name = val.trim(); renderAll(); }
+      tab.addEventListener('click', function(){
+        if (i===currentFloor){ openMenu(); return; }
+        currentFloor = i; selection = null;
+        updateContextButtons(); renderTabs(); render();
       });
       floorRow.appendChild(tab);
     });
-    const addBtn = document.createElement('button');
-    addBtn.id = 'addFloorBtn';
-    addBtn.textContent = '+';
-    addBtn.addEventListener('click', ()=>{
-      snapshot();
-      floors.push(newFloor("Verdieping " + (floors.length+1)));
-      currentFloor = floors.length-1;
-      renderAll();
-    });
+
+    var addBtn = document.createElement('button');
+    addBtn.className = 'roundBtn';
+    addBtn.textContent = '+ Floor';
+    addBtn.addEventListener('click', addFloor);
     floorRow.appendChild(addBtn);
+
+    var dupBtn = document.createElement('button');
+    dupBtn.className = 'roundBtn';
+    dupBtn.textContent = 'Duplicate';
+    dupBtn.addEventListener('click', duplicateFloor);
+    floorRow.appendChild(dupBtn);
   }
 
-  // ── Mode buttons ────────────────────────────────────────────────────────
-  const HINTS = {
-    room: "Sleep op het canvas om een kamer te tekenen.",
-    door: "Tik op een muurlijn om een deur te plaatsen.",
-    window: "Tik op een muurlijn om een raam te plaatsen.",
-    select: "Tik een kamer aan om te verplaatsen. Sleep de hoekjes om te schalen."
-  };
-  document.querySelectorAll('.modeBtn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      mode = btn.dataset.mode;
-      selection = null;
-      document.querySelectorAll('.modeBtn').forEach(b=>b.classList.toggle('active', b===btn));
-      hint.textContent = HINTS[mode];
-      renderAll();
-    });
-  });
-  document.querySelector('.modeBtn[data-mode="room"]').classList.add('active');
-  hint.textContent = HINTS.room;
-
-  undoBtn.addEventListener('click', undo);
-  deleteBtn.addEventListener('click', deleteSelection);
-  labelBtn.addEventListener('click', openLabelSheet);
-  document.getElementById('exportBtn').addEventListener('click', exportPNG);
-
-  function findRoom(id){ return floors[currentFloor].rooms.find(r=>r.id===id); }
-
-  function deleteSelection(){
-    if (!selection) return;
-    const room = findRoom(selection.roomId);
-    if (!room) return;
+  function addFloor(){
     snapshot();
-    if (selection.kind === 'room'){
-      floors[currentFloor].rooms = floors[currentFloor].rooms.filter(r=>r.id!==room.id);
-    } else if (selection.kind === 'door'){
-      room.doors.splice(selection.index,1);
-    } else if (selection.kind === 'window'){
-      room.windows.splice(selection.index,1);
-    }
+    floors.push(newFloor('Floor ' + (floors.length+1)));
+    currentFloor = floors.length-1;
+    selection = null; updateContextButtons();
+    renderTabs(); render();
+    flashHint('New empty floor added.');
+  }
+
+  function duplicateFloor(){
+    var src = floors[currentFloor];
+    snapshot();
+    var copy = {name: src.name + ' (copy)', rooms: []};
+    src.rooms.forEach(function(r){
+      var nr = {
+        id: newId(), x:r.x, y:r.y, w:r.w, h:r.h, type:r.type, label:r.label,
+        doors: (r.doors||[]).map(function(d){ return {side:d.side, pos:d.pos}; }),
+        windows: (r.windows||[]).map(function(d){ return {side:d.side, pos:d.pos}; })
+      };
+      copy.rooms.push(nr);
+    });
+    floors.splice(currentFloor+1, 0, copy);
+    currentFloor = currentFloor + 1;
     selection = null;
-    renderAll();
+    updateContextButtons(); closeSheets(); renderTabs(); render();
+    flashHint('Floor duplicated with ' + copy.rooms.length + ' room' + (copy.rooms.length===1?'':'s') + '.');
   }
 
-  // ── Geometrie helpers ───────────────────────────────────────────────────
-  function clamp(v,a,b){ return Math.max(a, Math.min(b,v)); }
-  function snap(v){ return Math.round(v/SNAP)*SNAP; }
+  // ─── Options menu ──────────────────────────────────────────────────────
+  document.getElementById('menuBtn').addEventListener('click', openMenu);
 
-  function pointToSegment(p, a, b){
-    const dx=b.x-a.x, dy=b.y-a.y;
-    const len2 = dx*dx+dy*dy || 1e-6;
-    let t = ((p.x-a.x)*dx + (p.y-a.y)*dy)/len2;
-    t = clamp(t,0,1);
-    const proj = {x:a.x+t*dx, y:a.y+t*dy};
-    const d = Math.hypot(p.x-proj.x, p.y-proj.y);
-    return {distance:d, t};
+  function openMenu(){
+    document.getElementById('menuTitle').textContent = 'Options';
+    document.getElementById('floorGroupLabel').textContent = 'Floor: ' + floors[currentFloor].name;
+    document.getElementById('mDeleteFloor').style.display = floors.length>1 ? 'block' : 'none';
+    document.getElementById('mShapeSub').textContent = 'Now: ' + SHAPES[shapeKey].label;
+    var scaleItem = document.getElementById('mScale');
+    var scaleSub = document.getElementById('mScaleSub');
+    if (metersPerUnit > 0){
+      scaleItem.firstChild.nodeValue = 'Clear scale';
+      scaleSub.textContent = 'Room sizes are shown on the plan';
+    } else {
+      scaleItem.firstChild.nodeValue = 'Set scale';
+      scaleSub.textContent = 'Select a room first, then give its real width in metres';
+    }
+    openSheet(menuSheet);
   }
 
-  const SIDES = {
-    top:    (r)=>({a:{x:r.x,y:r.y}, b:{x:r.x+r.w,y:r.y}, along:{x:1,y:0}, normal:{x:0,y:1}}),
-    bottom: (r)=>({a:{x:r.x,y:r.y+r.h}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:1,y:0}, normal:{x:0,y:-1}}),
-    left:   (r)=>({a:{x:r.x,y:r.y}, b:{x:r.x,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:1,y:0}}),
-    right:  (r)=>({a:{x:r.x+r.w,y:r.y}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:-1,y:0}})
+  document.getElementById('mDuplicateFloor').addEventListener('click', duplicateFloor);
+
+  document.getElementById('mRenameFloor').addEventListener('click', function(){
+    closeSheets();
+    var val = prompt('Floor name:', floors[currentFloor].name);
+    if (val && val.trim()){ snapshot(); floors[currentFloor].name = val.trim(); renderTabs(); render(); }
+  });
+
+  document.getElementById('mDeleteFloor').addEventListener('click', function(){
+    closeSheets();
+    if (floors.length<=1) return;
+    if (!confirm('Delete "' + floors[currentFloor].name + '" and everything on it?')) return;
+    snapshot();
+    floors.splice(currentFloor,1);
+    currentFloor = Math.max(0, currentFloor-1);
+    selection = null; updateContextButtons();
+    renderTabs(); render();
+  });
+
+  document.getElementById('mScale').addEventListener('click', function(){
+    var room = findRoom(selection && selection.roomId);
+    closeSheets();
+    if (metersPerUnit > 0){
+      if (confirm('Clear the scale? Room sizes will disappear from the plan.')){
+        metersPerUnit = 0; render(); flashHint('Scale cleared.');
+      }
+      return;
+    }
+    if (!room){
+      setMode('select');
+      flashHint('Tap a room to select it, then open Options and set the scale.');
+      return;
+    }
+    var val = prompt('How wide is "' + (room.label||'this room') + '" in metres?\n\nMeasure the horizontal side (left to right on screen).');
+    if (val === null) return;
+    var m = parseFloat(String(val).replace(',','.'));
+    if (!isFinite(m) || m <= 0){ flashHint('Please enter a number, for example 4.2'); return; }
+    metersPerUnit = m / room.w;
+    render();
+    flashHint('Scale set. Every room now shows its size.');
+  });
+
+  document.getElementById('mShape').addEventListener('click', function(){
+    closeSheets();
+    var keys = Object.keys(SHAPES);
+    var next = keys[(keys.indexOf(shapeKey)+1) % keys.length];
+    snapshot();
+    shapeKey = next; LW = SHAPES[next].w; LH = SHAPES[next].h;
+    floors.forEach(function(f){
+      f.rooms.forEach(function(r){
+        r.w = Math.min(r.w, LW); r.h = Math.min(r.h, LH);
+        r.x = clamp(r.x, 0, LW-r.w); r.y = clamp(r.y, 0, LH-r.h);
+      });
+    });
+    fitCanvas();
+    flashHint('Drawing area: ' + SHAPES[next].label);
+  });
+
+  document.getElementById('mNew').addEventListener('click', function(){
+    closeSheets();
+    if (!confirm('Start a new plan? The current one will be cleared.')) return;
+    clearSaved();
+    floors = [newFloor('Ground floor')];
+    currentFloor = 0; history = []; selection = null; metersPerUnit = 0;
+    backToStart();
+  });
+
+  // ─── Modes ─────────────────────────────────────────────────────────────
+  var HINTS = {
+    room: 'Drag on the canvas to draw a room.',
+    door: 'Tap a wall line to place a door.',
+    window: 'Tap a wall line to place a window.',
+    select: 'Tap a room to select it. Drag to move, drag the corner dots to resize.'
   };
+  function setMode(m){
+    mode = m; selection = null; updateContextButtons();
+    Array.prototype.forEach.call(document.querySelectorAll('.modeBtn'), function(b){
+      b.classList.toggle('active', b.dataset.mode===m);
+    });
+    flashHint(HINTS[m]);
+    render();
+  }
+  function setModeKeepSelection(m){
+    mode = m;
+    Array.prototype.forEach.call(document.querySelectorAll('.modeBtn'), function(b){
+      b.classList.toggle('active', b.dataset.mode===m);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.modeBtn'), function(btn){
+    btn.addEventListener('click', function(){ setMode(btn.dataset.mode); });
+  });
+  function flashHint(text){
+    infoLine.textContent = text;
+    showHintUntil = Date.now() + 2800;
+    if (hintTimer) clearTimeout(hintTimer);
+    hintTimer = setTimeout(updateInfoLine, 2900);
+  }
+  function updateInfoLine(){
+    if (Date.now() < showHintUntil) return;
+    infoLine.textContent = summaryText(floors[currentFloor]) || HINTS[mode];
+  }
+  function summaryText(floor){
+    var counts = {};
+    floor.rooms.forEach(function(r){ counts[r.type] = (counts[r.type]||0)+1; });
+    var parts = [];
+    SUMMARY_ORDER.forEach(function(type){
+      var n = counts[type];
+      if (!n) return;
+      parts.push(n + ' ' + (n===1 ? presetFor(type).label.toLowerCase() : PLURALS[type]));
+    });
+    return parts.join(' \u00B7 ');
+  }
 
+  // ─── Geometry ──────────────────────────────────────────────────────────
+  function findRoom(id){
+    if (!id) return null;
+    var rooms = floors[currentFloor].rooms;
+    for (var i=0;i<rooms.length;i++){ if (rooms[i].id===id) return rooms[i]; }
+    return null;
+  }
+  var SIDES = {
+    top:    function(r){ return {a:{x:r.x,y:r.y}, b:{x:r.x+r.w,y:r.y}, along:{x:1,y:0}, normal:{x:0,y:1}}; },
+    bottom: function(r){ return {a:{x:r.x,y:r.y+r.h}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:1,y:0}, normal:{x:0,y:-1}}; },
+    left:   function(r){ return {a:{x:r.x,y:r.y}, b:{x:r.x,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:1,y:0}}; },
+    right:  function(r){ return {a:{x:r.x+r.w,y:r.y}, b:{x:r.x+r.w,y:r.y+r.h}, along:{x:0,y:1}, normal:{x:-1,y:0}}; }
+  };
+  function pointToSegment(p,a,b){
+    var dx=b.x-a.x, dy=b.y-a.y;
+    var len2 = dx*dx+dy*dy || 1e-6;
+    var t = clamp(((p.x-a.x)*dx + (p.y-a.y)*dy)/len2, 0, 1);
+    var px = a.x+t*dx, py = a.y+t*dy;
+    return {distance: Math.sqrt((p.x-px)*(p.x-px)+(p.y-py)*(p.y-py)), t:t};
+  }
   function findNearestWall(p){
-    let best = null;
-    floors[currentFloor].rooms.forEach(room=>{
-      Object.keys(SIDES).forEach(sideKey=>{
-        const s = SIDES[sideKey](room);
-        const res = pointToSegment(p, s.a, s.b);
+    var best = null;
+    floors[currentFloor].rooms.forEach(function(room){
+      Object.keys(SIDES).forEach(function(key){
+        var s = SIDES[key](room);
+        var res = pointToSegment(p, s.a, s.b);
         if (res.distance <= EDGE_HIT && (!best || res.distance < best.distance)){
-          best = {room, side:sideKey, t:res.t, distance:res.distance};
+          best = {room:room, side:key, t:res.t, distance:res.distance};
         }
       });
     });
     if (!best) return null;
-    const edgeLen = (best.side==='top'||best.side==='bottom') ? best.room.w : best.room.h;
-    const minT = clamp((GAP_LEN/2+4)/edgeLen, 0.05, 0.45);
-    const t = clamp(best.t, minT, 1-minT);
-    return {room:best.room, side:best.side, pos:t};
-  }
-
-  // ── Pointer interactie ─────────────────────────────────────────────────
-  let drag = null; // {type:'newroom'|'move'|'resize', ...}
-
-  function getPos(e){
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX-rect.left)/rect.width*LOGICAL_W,
-      y: (e.clientY-rect.top)/rect.height*LOGICAL_H
-    };
-  }
-
-  function hitTestRoom(p){
-    const rooms = floors[currentFloor].rooms;
-    for (let i=rooms.length-1; i>=0; i--){
-      const r = rooms[i];
-      if (p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h) return r;
-    }
-    return null;
-  }
-  function hitTestHandle(p, room){
-    const handles = corners(room);
-    for (const h of handles){
-      if (Math.hypot(p.x-h.x, p.y-h.y) < 14) return h.key;
-    }
-    return null;
+    var edgeLen = (best.side==='top'||best.side==='bottom') ? best.room.w : best.room.h;
+    var minT = clamp((GAP_LEN/2+4)/edgeLen, 0.05, 0.45);
+    return {room:best.room, side:best.side, pos:clamp(best.t, minT, 1-minT)};
   }
   function corners(r){
     return [
@@ -381,260 +709,548 @@
       {key:'sw', x:r.x, y:r.y+r.h}, {key:'se', x:r.x+r.w, y:r.y+r.h}
     ];
   }
+  function hitTestRoom(p){
+    var rooms = floors[currentFloor].rooms;
+    for (var i=rooms.length-1;i>=0;i--){
+      var r = rooms[i];
+      if (p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h) return r;
+    }
+    return null;
+  }
+  function hitTestHandle(p, room){
+    var hs = corners(room);
+    for (var i=0;i<hs.length;i++){
+      if (Math.abs(p.x-hs[i].x)<15 && Math.abs(p.y-hs[i].y)<15) return hs[i].key;
+    }
+    return null;
+  }
 
-  canvas.addEventListener('pointerdown', (e)=>{
+  // ─── Pointer ───────────────────────────────────────────────────────────
+  function getPos(e){
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX-rect.left)/rect.width*LW,
+      y: (e.clientY-rect.top)/rect.height*LH
+    };
+  }
+
+  canvas.addEventListener('pointerdown', function(e){
+    e.preventDefault();
     canvas.setPointerCapture(e.pointerId);
-    const p = getPos(e);
+    var p = getPos(e);
 
-    if (mode === 'room'){
+    if (mode==='room'){
       snapshot();
       drag = {type:'newroom', start:{x:snap(p.x), y:snap(p.y)}};
       return;
     }
-    if (mode === 'door' || mode === 'window'){
-      const wall = findNearestWall(p);
+    if (mode==='door' || mode==='window'){
+      var wall = findNearestWall(p);
       if (wall){
         snapshot();
-        const arr = mode === 'door' ? wall.room.doors : wall.room.windows;
-        arr.push({side:wall.side, pos:wall.pos});
-        renderAll();
+        (mode==='door' ? wall.room.doors : wall.room.windows).push({side:wall.side, pos:wall.pos});
+        render();
+      } else {
+        flashHint('No wall there. Tap closer to a room outline.');
       }
       return;
     }
-    // select mode
-    const selRoom = selection && findRoom(selection.roomId);
-    if (selRoom && selection.kind==='room'){
-      const handle = hitTestHandle(p, selRoom);
+    var selRoom = selection && findRoom(selection.roomId);
+    if (selRoom){
+      var handle = hitTestHandle(p, selRoom);
       if (handle){
         snapshot();
-        drag = {type:'resize', room:selRoom, handle, startX:p.x, startY:p.y, orig:{...selRoom}};
+        drag = {type:'resize', room:selRoom, handle:handle,
+                orig:{x:selRoom.x,y:selRoom.y,w:selRoom.w,h:selRoom.h}};
         return;
       }
     }
-    const room = hitTestRoom(p);
+    var room = hitTestRoom(p);
     if (room){
       selection = {kind:'room', roomId:room.id};
       snapshot();
-      drag = {type:'move', room, startX:p.x, startY:p.y, origX:room.x, origY:room.y};
-      updateContextButtons();
-      renderAll();
+      drag = {type:'move', room:room, startX:p.x, startY:p.y, origX:room.x, origY:room.y};
     } else {
       selection = null;
-      updateContextButtons();
-      renderAll();
     }
+    updateContextButtons();
+    render();
   });
 
-  canvas.addEventListener('pointermove', (e)=>{
+  canvas.addEventListener('pointermove', function(e){
     if (!drag) return;
-    const p = getPos(e);
-    if (drag.type === 'newroom'){
-      const x = Math.min(drag.start.x, snap(p.x));
-      const y = Math.min(drag.start.y, snap(p.y));
-      const w = Math.abs(snap(p.x)-drag.start.x);
-      const h = Math.abs(snap(p.y)-drag.start.y);
-      drag.preview = {x,y,w,h};
-      renderAll(drag.preview);
-    } else if (drag.type === 'move'){
-      const dx = snap(p.x-drag.startX), dy = snap(p.y-drag.startY);
-      drag.room.x = clamp(drag.origX+dx, 0, LOGICAL_W-drag.room.w);
-      drag.room.y = clamp(drag.origY+dy, 0, LOGICAL_H-drag.room.h);
-      renderAll();
-    } else if (drag.type === 'resize'){
-      const r = drag.room, o = drag.orig;
-      let {x,y,w,h} = o;
-      if (drag.handle.includes('n')){ const ny = snap(p.y); h = o.y+o.h-ny; y = ny; }
-      if (drag.handle.includes('s')){ h = snap(p.y)-o.y; }
-      if (drag.handle.includes('w')){ const nx = snap(p.x); w = o.x+o.w-nx; x = nx; }
-      if (drag.handle.includes('e')){ w = snap(p.x)-o.x; }
-      r.x=x; r.y=y;
-      r.w=Math.max(MIN_ROOM,w); r.h=Math.max(MIN_ROOM,h);
-      renderAll();
+    e.preventDefault();
+    var p = getPos(e);
+    if (drag.type==='newroom'){
+      drag.preview = {
+        x: Math.min(drag.start.x, snap(p.x)),
+        y: Math.min(drag.start.y, snap(p.y)),
+        w: Math.abs(snap(p.x)-drag.start.x),
+        h: Math.abs(snap(p.y)-drag.start.y)
+      };
+      render(drag.preview);
+    } else if (drag.type==='move'){
+      var dx = snap(p.x-drag.startX), dy = snap(p.y-drag.startY);
+      drag.room.x = clamp(drag.origX+dx, 0, LW-drag.room.w);
+      drag.room.y = clamp(drag.origY+dy, 0, LH-drag.room.h);
+      render();
+    } else if (drag.type==='resize'){
+      var r = drag.room, o = drag.orig;
+      var x=o.x, y=o.y, w=o.w, h=o.h;
+      if (drag.handle.indexOf('n')>-1){ var ny = clamp(snap(p.y),0,o.y+o.h-MIN_ROOM); h = o.y+o.h-ny; y = ny; }
+      if (drag.handle.indexOf('s')>-1){ h = clamp(snap(p.y),o.y+MIN_ROOM,LH) - o.y; }
+      if (drag.handle.indexOf('w')>-1){ var nx = clamp(snap(p.x),0,o.x+o.w-MIN_ROOM); w = o.x+o.w-nx; x = nx; }
+      if (drag.handle.indexOf('e')>-1){ w = clamp(snap(p.x),o.x+MIN_ROOM,LW) - o.x; }
+      r.x=x; r.y=y; r.w=Math.max(MIN_ROOM,w); r.h=Math.max(MIN_ROOM,h);
+      render();
     }
   });
 
   function endDrag(){
-    if (drag && drag.type==='newroom' && drag.preview){
-      const {x,y,w,h} = drag.preview;
-      if (w>=MIN_ROOM && h>=MIN_ROOM){
-        const room = {id:newId(), x, y, w, h, type:'overig', label:'Overig', doors:[], windows:[]};
+    if (drag && drag.type==='newroom'){
+      if (drag.preview && drag.preview.w>=MIN_ROOM && drag.preview.h>=MIN_ROOM){
+        var pr = drag.preview;
+        var room = {id:newId(), x:pr.x, y:pr.y, w:pr.w, h:pr.h,
+                    type:'other', label:'Other', doors:[], windows:[]};
         floors[currentFloor].rooms.push(room);
         selection = {kind:'room', roomId:room.id};
         updateContextButtons();
-        openLabelSheet();
+        openSheet(labelSheet);
       } else {
-        history.pop(); // niets getekend, snapshot terugdraaien
+        history.pop(); // nothing drawn, drop the snapshot again
       }
     }
     drag = null;
-    renderAll();
+    render();
   }
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
 
+  // ─── Contextual buttons ────────────────────────────────────────────────
   function updateContextButtons(){
-    const has = !!selection;
-    labelBtn.style.display = (has && selection.kind==='room') ? 'inline-block' : 'none';
-    deleteBtn.style.display = has ? 'inline-block' : 'none';
+    var has = !!(selection && findRoom(selection.roomId));
+    labelBtn.style.display = has ? 'flex' : 'none';
+    copyBtn.style.display = has ? 'flex' : 'none';
+    deleteBtn.style.display = has ? 'flex' : 'none';
+  }
+  labelBtn.addEventListener('click', function(){ if (selection) openSheet(labelSheet); });
+
+  copyBtn.addEventListener('click', function(){
+    var room = findRoom(selection && selection.roomId);
+    if (!room){ flashHint('Select a room first.'); return; }
+    snapshot();
+
+    var copy = {
+      id: newId(), x:room.x, y:room.y, w:room.w, h:room.h, type:room.type, label:room.label,
+      doors: (room.doors||[]).map(function(d){ return {side:d.side, pos:d.pos}; }),
+      windows: (room.windows||[]).map(function(d){ return {side:d.side, pos:d.pos}; })
+    };
+
+    // Place the copy where it is actually visible, never on top of the original
+    var offsets = [[20,20],[-20,20],[20,-20],[-20,-20],[room.w+10,0],[0,room.h+10],[-(room.w+10),0],[0,-(room.h+10)]];
+    var placed = false;
+    for (var i=0;i<offsets.length;i++){
+      var nx = room.x+offsets[i][0], ny = room.y+offsets[i][1];
+      if (nx>=0 && ny>=0 && nx+room.w<=LW && ny+room.h<=LH){
+        copy.x = nx; copy.y = ny; placed = true; break;
+      }
+    }
+    if (!placed){
+      copy.x = clamp(room.x+20, 0, Math.max(0, LW-room.w));
+      copy.y = clamp(room.y+20, 0, Math.max(0, LH-room.h));
+    }
+
+    var preset = presetFor(copy.type);
+    if (preset.numbered) copy.label = preset.label + ' ' + nextNumber(copy.type, null);
+
+    floors[currentFloor].rooms.push(copy);
+    selection = {kind:'room', roomId:copy.id};
+    setModeKeepSelection('select');
+    updateContextButtons();
+    render();
+    flashHint(placed
+      ? 'Copied as "' + copy.label + '". Drag it into place.'
+      : 'Copied as "' + copy.label + '", stacked on the original. Drag it away.');
+  });
+
+  deleteBtn.addEventListener('click', function(){
+    var room = findRoom(selection && selection.roomId);
+    if (!room) return;
+    snapshot();
+    floors[currentFloor].rooms = floors[currentFloor].rooms.filter(function(r){ return r.id!==room.id; });
+    selection = null; updateContextButtons(); render();
+  });
+
+  // ─── Drawing ───────────────────────────────────────────────────────────
+  function drawGrid(c, w, h){
+    c.strokeStyle = '#EEF1F0'; c.lineWidth = 1;
+    for (var x=0;x<=w;x+=20){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,h); c.stroke(); }
+    for (var y=0;y<=h;y+=20){ c.beginPath(); c.moveTo(0,y); c.lineTo(w,y); c.stroke(); }
   }
 
-  // ── Tekenfuncties (herbruikbaar voor canvas + export) ──────────────────
-  function drawGrid(c){
-    c.strokeStyle = '#EEF1F0'; c.lineWidth = 1;
-    for (let x=0; x<=LOGICAL_W; x+=20){ c.beginPath(); c.moveTo(x,0); c.lineTo(x,LOGICAL_H); c.stroke(); }
-    for (let y=0; y<=LOGICAL_H; y+=20){ c.beginPath(); c.moveTo(0,y); c.lineTo(LOGICAL_W,y); c.stroke(); }
+  function drawOpening(c, room, opening, kind){
+    var s = SIDES[opening.side](room);
+    var dx = s.b.x-s.a.x, dy = s.b.y-s.a.y;
+    var cx = s.a.x+dx*opening.pos, cy = s.a.y+dy*opening.pos;
+    var along = s.along, normal = s.normal;
+    var hx = cx-along.x*GAP_LEN/2, hy = cy-along.y*GAP_LEN/2;
+    var ex = hx+along.x*GAP_LEN, ey = hy+along.y*GAP_LEN;
+
+    c.save();
+    c.fillStyle = '#FFFFFF';
+    c.beginPath();
+    c.moveTo(hx-normal.x*3, hy-normal.y*3);
+    c.lineTo(ex-normal.x*3, ey-normal.y*3);
+    c.lineTo(ex+normal.x*3, ey+normal.y*3);
+    c.lineTo(hx+normal.x*3, hy+normal.y*3);
+    c.closePath(); c.fill();
+    c.restore();
+
+    if (kind==='window'){
+      c.strokeStyle = '#5B8DEF'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(hx,hy); c.lineTo(ex,ey); c.stroke();
+    } else {
+      c.strokeStyle = '#3A3A3A'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(hx,hy); c.lineTo(hx+normal.x*GAP_LEN, hy+normal.y*GAP_LEN); c.stroke();
+      var a1 = Math.atan2(along.y, along.x);
+      var a2 = Math.atan2(normal.y, normal.x);
+      var diff = a2-a1;
+      while (diff>Math.PI) diff -= 2*Math.PI;
+      while (diff<=-Math.PI) diff += 2*Math.PI;
+      c.beginPath(); c.arc(hx, hy, GAP_LEN, a1, a2, diff<0); c.stroke();
+    }
+  }
+
+  function drawStairSteps(c, room){
+    var horizontal = room.w >= room.h;
+    var span = horizontal ? room.w : room.h;
+    var steps = clamp(Math.round(span/13), 3, 14);
+    c.strokeStyle = '#9AA5A2'; c.lineWidth = 1;
+    for (var i=1;i<steps;i++){
+      var t = i/steps;
+      c.beginPath();
+      if (horizontal){
+        var x = room.x + room.w*t;
+        c.moveTo(x, room.y+2.5); c.lineTo(x, room.y+room.h-2.5);
+      } else {
+        var y = room.y + room.h*t;
+        c.moveTo(room.x+2.5, y); c.lineTo(room.x+room.w-2.5, y);
+      }
+      c.stroke();
+    }
+  }
+
+  function tokenize(text){
+    var out = [];
+    String(text||'').split(/\s+/).forEach(function(w){
+      if (!w) return;
+      var parts = w.split('/');
+      for (var i=0;i<parts.length;i++){
+        if (!parts[i]) continue;
+        out.push(i < parts.length-1 ? parts[i]+'/' : parts[i]);
+      }
+    });
+    return out;
+  }
+
+  function wrapLines(c, text, maxWidth){
+    var tokens = tokenize(text);
+    function join(a,b){ return a ? (a.charAt(a.length-1)==='/' ? a+b : a+' '+b) : b; }
+    var lines = [], line = '';
+    for (var i=0;i<tokens.length;i++){
+      var test = join(line, tokens[i]);
+      if (c.measureText(test).width > maxWidth && line){ lines.push(line); line = tokens[i]; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+
+    // Last resort: hard-break anything that still does not fit
+    var out = [];
+    lines.forEach(function(l){
+      while (c.measureText(l).width > maxWidth && l.length > 1){
+        var cut = l.length;
+        while (cut > 1 && c.measureText(l.slice(0,cut)).width > maxWidth) cut--;
+        out.push(l.slice(0,cut));
+        l = l.slice(cut);
+      }
+      if (l) out.push(l);
+    });
+    return out;
+  }
+
+  function labelSize(room){
+    // Logical font size, so it scales identically on screen and in the export
+    return clamp(Math.min(room.w*0.15, room.h*0.30), 5, 13);
+  }
+
+  function dimsText(room){
+    if (!metersPerUnit) return null;
+    var w = room.w*metersPerUnit, h = room.h*metersPerUnit;
+    return w.toFixed(1) + ' \u00D7 ' + h.toFixed(1) + ' m';
   }
 
   function drawRoom(c, room, isSelected){
-    const preset = presetFor(room.type);
+    var fontSize = labelSize(room);
+    var preset = presetFor(room.type);
+
     c.fillStyle = preset.fill;
     c.fillRect(room.x, room.y, room.w, room.h);
+    if (room.type==='stairs') drawStairSteps(c, room);
+
     c.strokeStyle = isSelected ? '#1F7A64' : preset.stroke;
     c.lineWidth = isSelected ? 3 : 2;
     c.strokeRect(room.x, room.y, room.w, room.h);
 
-    c.fillStyle = '#3A3A3A';
-    c.font = '11px Arial';
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    wrapText(c, room.label || '', room.x+room.w/2, room.y+room.h/2, room.w-8);
+    (room.doors||[]).forEach(function(d){ drawOpening(c, room, d, 'door'); });
+    (room.windows||[]).forEach(function(w){ drawOpening(c, room, w, 'window'); });
 
-    (room.doors||[]).forEach(d=> drawOpening(c, room, d, 'door'));
-    (room.windows||[]).forEach(w=> drawOpening(c, room, w, 'window'));
+    // Label, and room size when a scale has been set
+    var cx = room.x + room.w/2, cy = room.y + room.h/2;
+    var maxW = Math.max(18, room.w - 8);
+    var lh = fontSize*1.18;
+    var dimFs = fontSize*0.78, dimLh = dimFs*1.25;
+
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = fontSize + 'px Arial, Helvetica, sans-serif';
+    var lines = wrapLines(c, room.label, maxW);
+
+    // Never let the label spill out of the room
+    var maxLines = Math.max(1, Math.floor((room.h - 4) / lh));
+    if (lines.length > maxLines){
+      lines = lines.slice(0, maxLines);
+      lines[maxLines-1] = lines[maxLines-1].replace(/.$/, '\u2026');
+    }
+
+    var dims = dimsText(room);
+    if (dims){
+      c.font = dimFs + 'px Arial, Helvetica, sans-serif';
+      // Skip the size if it simply does not fit inside the room
+      if (c.measureText(dims).width > maxW || lines.length*lh + dimLh > room.h - 4) dims = null;
+    }
+
+    var totalH = lines.length*lh + (dims ? dimLh : 0);
+    var top = cy - totalH/2;
+
+    if (room.type==='stairs'){
+      c.font = fontSize + 'px Arial, Helvetica, sans-serif';
+      var tw = 0;
+      lines.forEach(function(l){ tw = Math.max(tw, c.measureText(l).width); });
+      if (dims){
+        c.font = dimFs + 'px Arial, Helvetica, sans-serif';
+        tw = Math.max(tw, c.measureText(dims).width);
+      }
+      c.fillStyle = 'rgba(255,255,255,0.88)';
+      c.fillRect(cx - tw/2 - 4, top - 2, tw + 8, totalH + 4);
+    }
+
+    c.font = fontSize + 'px Arial, Helvetica, sans-serif';
+    c.fillStyle = '#3A3A3A';
+    lines.forEach(function(l,i){ c.fillText(l, cx, top + i*lh + lh/2); });
+
+    if (dims){
+      c.font = dimFs + 'px Arial, Helvetica, sans-serif';
+      c.fillStyle = '#6B7876';
+      c.fillText(dims, cx, top + lines.length*lh + dimLh/2);
+    }
 
     if (isSelected){
       c.fillStyle = '#1F7A64';
-      corners(room).forEach(h=>{
+      corners(room).forEach(function(h){
         c.beginPath(); c.arc(h.x, h.y, 4.5, 0, Math.PI*2); c.fill();
       });
     }
   }
 
-  function wrapText(c, text, cx, cy, maxWidth){
-    const words = text.split(' ');
-    let lines = [], line = '';
-    words.forEach(w=>{
-      const test = line ? line+' '+w : w;
-      if (c.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
-      else line = test;
-    });
-    if (line) lines.push(line);
-    const lh = 13;
-    const startY = cy - ((lines.length-1)*lh)/2;
-    lines.forEach((l,i)=> c.fillText(l, cx, startY+i*lh));
-  }
-
-  function drawOpening(c, room, opening, kind){
-    const s = SIDES[opening.side](room);
-    const dx = s.b.x-s.a.x, dy = s.b.y-s.a.y;
-    const center = {x: s.a.x+dx*opening.pos, y: s.a.y+dy*opening.pos};
-    const along = s.along, normal = s.normal;
-    const hinge = {x: center.x-along.x*GAP_LEN/2, y: center.y-along.y*GAP_LEN/2};
-    const arcStart = {x: hinge.x+along.x*GAP_LEN, y: hinge.y+along.y*GAP_LEN};
-
-    // muur "openen" (witte rechthoek over de lijn)
-    c.save();
-    c.fillStyle = '#FFFFFF';
-    c.beginPath();
-    c.moveTo(hinge.x-normal.x*3, hinge.y-normal.y*3);
-    c.lineTo(arcStart.x-normal.x*3, arcStart.y-normal.y*3);
-    c.lineTo(arcStart.x+normal.x*3, arcStart.y+normal.y*3);
-    c.lineTo(hinge.x+normal.x*3, hinge.y+normal.y*3);
-    c.closePath(); c.fill();
-    c.restore();
-
-    if (kind === 'window'){
-      c.strokeStyle = '#5B8DEF'; c.lineWidth = 3;
-      c.beginPath(); c.moveTo(hinge.x,hinge.y); c.lineTo(arcStart.x,arcStart.y); c.stroke();
-    } else {
-      const leafEnd = {x: hinge.x+normal.x*GAP_LEN, y: hinge.y+normal.y*GAP_LEN};
-      c.strokeStyle = '#3A3A3A'; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(hinge.x,hinge.y); c.lineTo(leafEnd.x,leafEnd.y); c.stroke();
-      const a1 = Math.atan2(along.y, along.x);
-      const a2 = Math.atan2(normal.y, normal.x);
-      let diff = a2-a1;
-      while(diff>Math.PI) diff-=2*Math.PI;
-      while(diff<=-Math.PI) diff+=2*Math.PI;
-      c.beginPath();
-      c.arc(hinge.x, hinge.y, GAP_LEN, a1, a2, diff<0);
-      c.stroke();
-    }
-  }
-
-  function drawFloorContent(c, floor, previewRect){
-    c.clearRect(0,0,LOGICAL_W,LOGICAL_H);
-    drawGrid(c);
-    floor.rooms.forEach(room=>{
-      const isSel = selection && selection.kind==='room' && selection.roomId===room.id;
-      drawRoom(c, room, !!isSel);
+  function render(previewRect){
+    if (app.style.display==='none') return;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.scale(drawScale, drawScale);
+    drawGrid(ctx, LW, LH);
+    floors[currentFloor].rooms.forEach(function(room){
+      drawRoom(ctx, room, !!(selection && selection.roomId===room.id));
     });
     if (previewRect){
-      c.strokeStyle = '#1F7A64'; c.lineWidth = 2; c.setLineDash([5,4]);
-      c.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
-      c.setLineDash([]);
+      ctx.strokeStyle = '#1F7A64'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+      ctx.strokeRect(previewRect.x, previewRect.y, previewRect.w, previewRect.h);
+      ctx.setLineDash([]);
     }
+    ctx.setTransform(1,0,0,1,0,0);
+    updateInfoLine();
+    scheduleSave();
   }
 
-  function renderAll(previewRect){
-    renderFloorTabs();
-    ctx.save();
-    ctx.scale(LIVE_SCALE, LIVE_SCALE);
-    drawFloorContent(ctx, floors[currentFloor], previewRect);
-    ctx.restore();
+  // ─── Export: the plan only, nothing else ───────────────────────────────
+  function contentBounds(floor){
+    if (!floor.rooms.length) return null;
+    var minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    floor.rooms.forEach(function(r){
+      minX=Math.min(minX,r.x); minY=Math.min(minY,r.y);
+      maxX=Math.max(maxX,r.x+r.w); maxY=Math.max(maxY,r.y+r.h);
+    });
+    return {x:minX-CROP_PAD, y:minY-CROP_PAD, w:(maxX-minX)+CROP_PAD*2, h:(maxY-minY)+CROP_PAD*2};
   }
 
-  // ── Export naar PNG ──────────────────────────────────────────────────────
-  function exportPNG(){
-    const propName = document.getElementById('propName').value.trim() || 'Woning';
-    const padX = 24, titleH = 34, legendH = 26, gapBetween = 18;
-    const floorPxW = LOGICAL_W*EXPORT_SCALE;
-    const floorPxH = LOGICAL_H*EXPORT_SCALE;
-    const blockH = titleH + floorPxH + legendH + gapBetween;
+  function slug(s){
+    return String(s||'').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase() || 'plan';
+  }
 
-    const out = document.createElement('canvas');
-    out.width = floorPxW + padX*2;
-    out.height = blockH*floors.length + 20;
-    const octx = out.getContext('2d');
-    octx.fillStyle = '#FFFFFF';
-    octx.fillRect(0,0,out.width,out.height);
+  function renderFloorToCanvas(floor){
+    var out = document.createElement('canvas');
+    out.width = EXPORT_W; out.height = EXPORT_H;
+    var c = out.getContext('2d');
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(0,0,EXPORT_W,EXPORT_H);
 
-    floors.forEach((floor, i)=>{
-      const top = i*blockH + 16;
-      octx.fillStyle = '#1F7A64';
-      octx.font = 'bold 18px Arial';
-      octx.textAlign = 'left';
-      octx.fillText(propName + '  —  ' + floor.name, padX, top+16);
+    var b = contentBounds(floor);
+    if (!b) return out;
 
-      octx.save();
-      octx.translate(padX, top+titleH);
-      octx.scale(EXPORT_SCALE, EXPORT_SCALE);
-      drawFloorContent(octx, floor, null);
-      octx.strokeStyle = '#DADFDD'; octx.lineWidth = 1/EXPORT_SCALE;
-      octx.strokeRect(0,0,LOGICAL_W,LOGICAL_H);
-      octx.restore();
+    var areaW = EXPORT_W - EXPORT_MARGIN*2;
+    var areaH = EXPORT_H - EXPORT_MARGIN*2;
+    var scale = Math.min(areaW/b.w, areaH/b.h, MAX_EXPORT_SCALE);
+    var offX = EXPORT_MARGIN + (areaW - b.w*scale)/2;
+    var offY = EXPORT_MARGIN + (areaH - b.h*scale)/2;
 
-      const legendY = top+titleH+floorPxH+18;
-      octx.strokeStyle = '#3A3A3A'; octx.lineWidth = 1.5;
-      octx.beginPath(); octx.moveTo(padX, legendY); octx.lineTo(padX+14, legendY-10); octx.stroke();
-      octx.beginPath(); octx.arc(padX, legendY, 14, -Math.PI/2, 0); octx.stroke();
-      octx.fillStyle = '#3A3A3A'; octx.font = '12px Arial'; octx.textAlign='left';
-      octx.fillText('deur', padX+22, legendY+4);
+    c.save();
+    c.translate(offX, offY);
+    c.scale(scale, scale);
+    c.translate(-b.x, -b.y);
+    c.lineJoin = 'round';
+    floor.rooms.forEach(function(room){ drawRoom(c, room, false); });
+    c.restore();
+    return out;
+  }
 
-      octx.strokeStyle = '#5B8DEF'; octx.lineWidth = 3;
-      octx.beginPath(); octx.moveTo(padX+80, legendY); octx.lineTo(padX+106, legendY); octx.stroke();
-      octx.fillStyle = '#3A3A3A';
-      octx.fillText('raam', padX+112, legendY+4);
+  function canvasToBytes(cv){
+    return new Promise(function(resolve, reject){
+      cv.toBlob(function(blob){
+        if (!blob) return reject(new Error('could not render the image'));
+        var fr = new FileReader();
+        fr.onload = function(){ resolve(new Uint8Array(fr.result)); };
+        fr.onerror = function(){ reject(new Error('could not read the image')); };
+        fr.readAsArrayBuffer(blob);
+      }, 'image/png');
+    });
+  }
+
+  // Minimal ZIP writer (stored, no compression: PNG is already compressed)
+  var crcTable = null;
+  function makeCrcTable(){
+    var t = new Uint32Array(256);
+    for (var n=0;n<256;n++){
+      var c = n;
+      for (var k=0;k<8;k++){ c = (c & 1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); }
+      t[n] = c >>> 0;
+    }
+    return t;
+  }
+  function crc32(bytes){
+    if (!crcTable) crcTable = makeCrcTable();
+    var crc = 0xFFFFFFFF;
+    for (var i=0;i<bytes.length;i++){ crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF]; }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function dosDateTime(d){
+    var time = ((d.getHours() & 31) << 11) | ((d.getMinutes() & 63) << 5) | ((d.getSeconds()/2) & 31);
+    var date = (((d.getFullYear()-1980) & 127) << 9) | (((d.getMonth()+1) & 15) << 5) | (d.getDate() & 31);
+    return {time:time & 0xFFFF, date:date & 0xFFFF};
+  }
+  function makeZip(files){
+    var enc = new TextEncoder();
+    var dt = dosDateTime(new Date());
+    var chunks = [], central = [], offset = 0;
+
+    files.forEach(function(f){
+      var nameBytes = enc.encode(f.name);
+      var crc = crc32(f.data);
+      var local = new Uint8Array(30 + nameBytes.length);
+      var lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true); lv.setUint16(6, 0, true); lv.setUint16(8, 0, true);
+      lv.setUint16(10, dt.time, true); lv.setUint16(12, dt.date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, f.data.length, true); lv.setUint32(22, f.data.length, true);
+      lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      chunks.push(local, f.data);
+
+      var cen = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cen.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0, true); cv.setUint16(10, 0, true);
+      cv.setUint16(12, dt.time, true); cv.setUint16(14, dt.date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, f.data.length, true); cv.setUint32(24, f.data.length, true);
+      cv.setUint16(28, nameBytes.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      cen.set(nameBytes, 46);
+      central.push(cen);
+
+      offset += local.length + f.data.length;
     });
 
-    const link = document.createElement('a');
-    const safeName = propName.replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'') || 'plattegrond';
-    link.download = 'plattegrond_' + safeName + '.png';
-    link.href = out.toDataURL('image/png');
-    link.click();
+    var cdStart = offset, cdSize = 0;
+    central.forEach(function(c){ chunks.push(c); cdSize += c.length; });
+
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true); ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+    ev.setUint32(12, cdSize, true); ev.setUint32(16, cdStart, true); ev.setUint16(20, 0, true);
+    chunks.push(end);
+
+    return new Blob(chunks, {type:'application/zip'});
   }
 
-  // ── Init ────────────────────────────────────────────────────────────────
-  renderAll();
+  function downloadBlob(blob, filename){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  }
+
+  exportBtn.addEventListener('click', function(){
+    var drawn = floors.filter(function(f){ return f.rooms.length>0; });
+    if (!drawn.length){ flashHint('Draw at least one room before exporting.'); return; }
+
+    exportBtn.disabled = true;
+    exportBtn.textContent = 'Exporting';
+    var base = slug(accoId.value || propName.value);
+
+    var jobs = drawn.map(function(floor, i){
+      return canvasToBytes(renderFloorToCanvas(floor)).then(function(bytes){
+        return {name: base + '_' + String(i+1).padStart(2,'0') + '_' + slug(floor.name) + '.png', data: bytes};
+      });
+    });
+
+    Promise.all(jobs).then(function(files){
+      if (files.length === 1){
+        downloadBlob(new Blob([files[0].data], {type:'image/png'}), files[0].name);
+      } else {
+        downloadBlob(makeZip(files), base + '_floorplans.zip');
+      }
+      flashHint('Exported ' + files.length + ' floor' + (files.length>1?'s':'') + '.');
+    }).catch(function(err){
+      flashHint('Export failed: ' + (err && err.message ? err.message : 'unknown error'));
+    }).then(function(){
+      exportBtn.disabled = false;
+      exportBtn.textContent = 'Export';
+    });
+  });
+
+  // ─── Save when the page goes to the background ─────────────────────────
+  window.addEventListener('pagehide', saveNow);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden') saveNow();
+  });
+
 })();
 </script>
 </body>
